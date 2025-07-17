@@ -16,6 +16,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 ## Context Diagram
+![alt text](readme_images/1.png)
 
 ## Use Case Diagram
 
