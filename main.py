@@ -3,10 +3,18 @@ from fastapi.responses import FileResponse, Response, JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import os
+from dotenv import load_dotenv
+import random
+
 from models.geo import Geo
 
+from src.geo import validate_geo_coordinate
 
-import random
+load_dotenv()
+YANDEX_MAPS_API_KEY: str = os.getenv("YANDEX_MAPS_API_KEY")
+
+HEATMAP_RADIUS = 10  # 10 км
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -22,8 +30,21 @@ async def root():
 
 
 @app.get("/api/heatmap")
-async def api_heatmap(latitude: str, longitude: str):
+async def api_heatmap(
+    latitude: float, longitude: float, width: int = 1280, height: int = 720
+):
+    validate_res: bool = validate_geo_coordinate(latitude) and validate_geo_coordinate(
+        longitude
+    )
+    if not validate_res:
+        return Response(
+            {"message": "No coordinates"},
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
     print(latitude, longitude)
+    print(width, height)
+
     image_number = random.randint(1, 3)
     image_path = f"./static/images/{image_number}.png"
 
