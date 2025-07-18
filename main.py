@@ -31,7 +31,7 @@ async def root():
 
 @app.get("/api/heatmap")
 async def api_heatmap(
-    latitude: float, longitude: float, width: int = 1280, height: int = 720
+    latitude: float, longitude: float, scale: int, width: int = 1280, height: int = 720
 ):
     validate_res: bool = validate_geo_coordinate(latitude) and validate_geo_coordinate(
         longitude
