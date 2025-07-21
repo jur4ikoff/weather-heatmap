@@ -1,6 +1,24 @@
-def validate_geo_coordinate(coordinate: float) -> bool:
-    """Функция проверяет координаты на валидность"""
-    if coordinate < -180 or coordinate > 180:
-        return False
+from models.geo import Geo
 
-    return True
+
+class GeoManager:
+    """Класс, отвечает за работк с координатами"""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def parse_coordinates(coordinates: str) -> Geo:
+        """Парсит строку, в которой содержатся координаты в формате (firstcoordinate&secondcoordinate)"""
+        latitude, longitude = list(map(float, coordinates.split("&")))
+        return Geo(latitude=latitude, longitude=longitude)
+
+    @staticmethod
+    def validate_coordinates(coordinates: Geo) -> bool:
+        if coordinates.latitude < -90 or coordinates.latitude > 90:
+            return False
+
+        if coordinates.longitude < -90 or coordinates.longitude > 90:
+            return False
+
+        return True
