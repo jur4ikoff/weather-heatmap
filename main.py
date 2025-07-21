@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 
+import asyncio
 import os
 from dotenv import load_dotenv
 import random
@@ -11,11 +12,11 @@ import random
 from models.geo import Geo
 
 from src.geo import GeoManager
+from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnoughData, MapDownloaderErrorWhileDownloading
 
 load_dotenv()
 YANDEX_MAPS_API_KEY: str = os.getenv("YANDEX_MAPS_API_KEY")
-
-HEATMAP_RADIUS = 10  # 10 км
+# HEATMAP_RADIUS = 10  # 10 км
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -30,7 +31,7 @@ async def root():
 
 
 @app.get("/api/v2/heatmap")
-async def api_heatmap(
+async def api_heatmap_v2(
     str_coordinate_1: str, str_coordinate_2: str, scale: int, width: int = 1280, height: int = 720
 ):
     """Координаты передаются через символ &"""
@@ -71,8 +72,8 @@ async def api_heatmap(
 
 
 @app.get("/api/v1/heatmap")
-async def api_heatmap(
-    center: str, scale: int, width: int = 1280, height: int = 720
+async def api_heatmap_v1(
+    center: str, scale: float, width: int = 1280, height: int = 720
 ):
     """
     str_center_coordinates, in format: lattitude&longitude
@@ -95,13 +96,16 @@ async def api_heatmap(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    print(center.latitude, center.longitude)
+    map_dowloader = OsmMapDownloader(
+        latitude=center.latitude, longitude=center.longitude, scale=scale, width=width, height=height)
 
-    image_number = random.randint(1, 3)
-    image_path = f"./static/images/{image_number}.png"
+    download_task = asyncio.create_task(map_dowloader.download_map())
+    filepath: str = await download_task
+
+    # filepath: str = await map_dowloader.download_map()
 
     return FileResponse(
-        image_path,
+        filepath,
         status_code=status.HTTP_200_OK,
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",

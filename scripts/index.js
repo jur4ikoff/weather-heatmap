@@ -2,12 +2,14 @@ async function resButtonEventClickedV1(map) {
     const center = map.getCenter()
     const latitude = center[0];
     const longitude = center[1];
-    const scale = 10;
+    const scale = map.getZoom();
 
     const params = new URLSearchParams(
         {
             center: `${latitude}&${longitude}`,
-            scale: scale
+            scale: scale,
+            width: 1080,
+            height: 600
         }
     )
 
@@ -44,7 +46,7 @@ function init() {
         center: [55.76, 37.64],
         // Уровень масштабирования. Допустимые значения:
         // от 0 (весь мир) до 19.
-        zoom: 16
+        zoom: 10
     });
 
     document.getElementById("resButton").addEventListener("click", async () => resButtonEventClickedV1((map)));
