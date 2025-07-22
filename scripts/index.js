@@ -1,19 +1,18 @@
 async function resButtonEventClickedV1(map) {
-    const center = map.getCenter()
-    const latitude = center[0];
-    const longitude = center[1];
-    const scale = map.getZoom();
+    const bounds = map.getBounds();
+    const left_down = bounds[0];
+    const right_upper = bounds[1];
 
     const params = new URLSearchParams(
         {
-            center: `${latitude}&${longitude}`,
-            scale: scale,
-            width: 1080,
-            height: 600
+            leftdown: `${left_down[0]}&${left_down[1]}`,
+            rightupper: `${right_upper[0]}&${right_upper[1]}`,
+            width: document.getElementById("map").offsetWidth,
+            height: document.getElementById("map").offsetHeight
         }
     )
 
-    const response = await fetch(`api/v1/heatmap?${params.toString()}`, {
+    const response = await fetch(`api/v1.0/heatmap?${params.toString()}`, {
         method: "GET",
         headers: { "Accept": "maplication/json" },
     });

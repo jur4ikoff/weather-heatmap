@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 
 import asyncio
+import aiohttp
 import os
 from dotenv import load_dotenv
 import random
@@ -13,10 +14,11 @@ from models.geo import Geo
 
 from src.geo import GeoManager
 from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnoughData, MapDownloaderErrorWhileDownloading
+from src.generators import generate_random_name
 
 load_dotenv()
 YANDEX_MAPS_API_KEY: str = os.getenv("YANDEX_MAPS_API_KEY")
-# HEATMAP_RADIUS = 10  # 10 км
+IMAGES_PATH = os.getenv("IMAGES_PATH")
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -30,58 +32,19 @@ async def root():
     return FileResponse("./templates/index.html")
 
 
-@app.get("/api/v2/heatmap")
-async def api_heatmap_v2(
-    str_coordinate_1: str, str_coordinate_2: str, scale: int, width: int = 1280, height: int = 720
-):
-    """Координаты передаются через символ &"""
-    geo_manager = GeoManager()
-    try:
-        coordinates_1: Geo = geo_manager.parse_coordinates(str_coordinate_1)
-        coordinates_2: Geo = geo_manager.parse_coordinates(str_coordinate_2)
-    except Exception as e:
-        return Response(
-            {"message": "Fake coordinates"},
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-
-    validate_res: bool = geo_manager.validate_coordinates(
-        coordinates_1) and geo_manager.validate_coordinates(coordinates_2)
-    if not validate_res:
-        return Response(
-            {"message": "No coordinates"},
-            status_code=status.HTTP_404_NOT_FOUND,
-        )
-
-    print(coordinates_1.latitude, coordinates_1.longitude)
-    print(coordinates_2.latitude, coordinates_2.longitude)
-    print(width, height)
-
-    image_number = random.randint(1, 3)
-    image_path = f"./static/images/{image_number}.png"
-
-    return FileResponse(
-        image_path,
-        status_code=status.HTTP_200_OK,
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
-
-
-@app.get("/api/v1/heatmap")
-async def api_heatmap_v1(
-    center: str, scale: float, width: int = 1280, height: int = 720
+@app.get("/api/v1.0/heatmap")
+async def api_heatmap_v1_0(
+    leftdown: str, rightupper: str, width: int = 1280, height: int = 720
 ):
     """
     str_center_coordinates, in format: lattitude&longitude
     """
+
     geo_manager = GeoManager()
     try:
-        center: Geo = geo_manager.parse_coordinates(
-            center)
+        leftdown: Geo = geo_manager.parse_coordinates(
+            leftdown)
+        rightupper: Geo = geo_manager.parse_coordinates(rightupper)
     except Exception as e:
         print(e)
         return JSONResponse(
@@ -89,7 +52,8 @@ async def api_heatmap_v1(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    valiate_res: bool = geo_manager.validate_coordinates(center)
+    valiate_res: bool = geo_manager.validate_coordinates(
+        leftdown) and geo_manager.validate_coordinates(rightupper)
     if (not valiate_res):
         return JSONResponse(
             {"message": "Wrong coordinates value"},
@@ -97,13 +61,44 @@ async def api_heatmap_v1(
         )
 
     map_dowloader = OsmMapDownloader(
-        latitude=center.latitude, longitude=center.longitude, scale=scale, width=width, height=height)
+        leftdown=leftdown, rightupper=rightupper, width=width, height=height)
 
-    download_task = asyncio.create_task(map_dowloader.download_map())
-    filepath: str = await download_task
+    filepath = f"{IMAGES_PATH}/{generate_random_name(32)}.jpg"
+    download_task = asyncio.create_task(map_dowloader.download_map(filepath))
 
-    # filepath: str = await map_dowloader.download_map()
+    try:
+        await download_task
+    except MapDownloaderErrorNotEnoughData as e:
+        return JSONResponse(
+            {"message": "Loader Enough Data"},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except MapDownloaderErrorWhileDownloading as e:
+        return JSONResponse(
+            {"message": "Something Went Wrong"},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except asyncio.TimeoutError as e:
+        print(e)
+        if os.path.exists(filepath):
+            pass
+            # return FileResponse(
+            #     filepath,
+            #     status_code=status.HTTP_200_OK,
+            #     headers={
+            #         "Cache-Control": "no-cache, no-store, must-revalidate",
+            #         "Pragma": "no-cache",
+            #         "Expires": "0",
+            #     },
+            # )
+        else:
+            return JSONResponse(
+                {"message": "Error, reached timeout load map"},
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
+    
+    print(filepath)
     return FileResponse(
         filepath,
         status_code=status.HTTP_200_OK,
