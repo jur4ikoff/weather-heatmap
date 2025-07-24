@@ -11,14 +11,21 @@ from dotenv import load_dotenv
 import random
 
 from models.geo import Geo
+from models.weather import WeatherPoint
 
 from src.geo import GeoManager
 from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnoughData, MapDownloaderErrorWhileDownloading
 from src.generators import generate_random_name
+from src.weather import WeatherManager, WeatherGetError
+
+
+proxy = "http://93.190.138.107:46182"
 
 load_dotenv()
-YANDEX_MAPS_API_KEY: str = os.getenv("YANDEX_MAPS_API_KEY")
 IMAGES_PATH = os.getenv("IMAGES_PATH")
+
+STEP_LAT = 4
+STEP_LON = 4
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -32,6 +39,20 @@ async def root():
     return FileResponse("./templates/index.html")
 
 
+async def check_proxy(proxy):
+    test_url = "https://httpbin.org/ip"  # Сервис, который возвращает ваш IP
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(test_url, proxy=proxy, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    print(f"Прокси {proxy} работает. Ваш IP: {data['origin']}")
+                    return True
+    except:
+        return False
+    return False
+
+
 @app.get("/api/v1.0/heatmap")
 async def api_heatmap_v1_0(
     leftdown: str, rightupper: str, width: int = 1280, height: int = 720
@@ -39,6 +60,12 @@ async def api_heatmap_v1_0(
     """
     str_center_coordinates, in format: lattitude&longitude
     """
+
+    # proxy = "http://93.190.138.107:46182"
+    # res = await check_proxy(proxy)
+    # print(f"proxy res {res}")
+
+    weather_data : list[list[WeatherPoint]] = [[WeatherPoint(coordinates=Geo(latitude=0.0, longitude=0.0), temperature=0.0)] * width] * height
 
     geo_manager = GeoManager()
     try:
@@ -62,6 +89,9 @@ async def api_heatmap_v1_0(
 
     map_dowloader = OsmMapDownloader(
         leftdown=leftdown, rightupper=rightupper, width=width, height=height)
+
+    weather_namager = WeatherManager(proxy=proxy)
+    await weather_namager.get_weather_in_point(rightupper)
 
     filepath = f"{IMAGES_PATH}/{generate_random_name(32)}.jpg"
     download_task = asyncio.create_task(map_dowloader.download_map(filepath))
@@ -97,7 +127,6 @@ async def api_heatmap_v1_0(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-    
     print(filepath)
     return FileResponse(
         filepath,

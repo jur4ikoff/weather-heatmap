@@ -8,10 +8,12 @@ import os
 import aiohttp
 import aiofiles
 
-import asyncio
 
 load_dotenv()
 GEOAPIFY_ACCESS_TOKEN = os.getenv("GEOAPIFY_API_KEY")
+
+
+proxy = "http://93.190.138.107:46182"
 
 
 class OsmMapDownloader(MapDownloader):
@@ -31,13 +33,14 @@ class OsmMapDownloader(MapDownloader):
         self.url = "https://maps.geoapify.com/v1/staticmap?"
         params = {
             "apiKey": GEOAPIFY_ACCESS_TOKEN,
-            "style": "osm-bright",
+            "style": "dark-matter-brown",
             "width": self.width,
             "height": self.height,
             "area": f"rect:{self.leftdown.longitude},{self.leftdown.latitude},{self.rightupper.longitude},{self.rightupper.latitude}"
         }
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url=self.url, params=params) as response:
+
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            async with session.get(url=self.url, params=params, proxy=proxy) as response:
                 if (response.status != 200):
                     raise MapDownloaderErrorWhileDownloading()
 

@@ -1,4 +1,8 @@
 async function resButtonEventClickedV1(map) {
+
+    const button = document.getElementById("resButton");
+    button.disabled = true;
+
     const bounds = map.getBounds();
     const left_down = bounds[0];
     const right_upper = bounds[1];
@@ -27,6 +31,7 @@ async function resButtonEventClickedV1(map) {
         console.log(error.message);
     }
 
+    button.disabled = false;
 }
 
 
