@@ -46,10 +46,11 @@ class WeatherMatrix:
                 self.matrix[i][j] = WeatherPoint(
                     coordinates=temp_geo, temperature=None)
 
-    async def request_weather(self, step_lat: int, step_long: int):
-
-        dlat_index = self.height / step_lat
-        dlong_index = self.width / step_long
+    async def request_weather(self, count_by_lat: int, count_by_long: int):
+        """Функция запрашивает погоду в точках по latitude и longitude.
+        count_by_lat, count_by_long: Количество точек на каждой оси"""
+        dlat_index = self.height / count_by_lat
+        dlong_index = self.width / count_by_long
 
         weather_manager = WeatherManager(self.proxy)
         tasks = []
