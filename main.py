@@ -17,15 +17,16 @@ from src.geo import GeoManager
 from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnoughData, MapDownloaderErrorWhileDownloading
 from src.generators import generate_random_name
 from src.weather import WeatherManager, WeatherGetError
+from src.weather_matrix import WeatherMatrix
 
 
-proxy = "http://93.190.138.107:46182"
+proxy = "https://23.237.210.82:80"
 
 load_dotenv()
 IMAGES_PATH = os.getenv("IMAGES_PATH")
 
-STEP_LAT = 4
-STEP_LON = 4
+STEP_LAT = int(os.getenv("STEP_LAT"))
+STEP_LON = int(os.getenv("STEP_LON"))
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -61,11 +62,8 @@ async def api_heatmap_v1_0(
     str_center_coordinates, in format: lattitude&longitude
     """
 
-    # proxy = "http://93.190.138.107:46182"
     # res = await check_proxy(proxy)
     # print(f"proxy res {res}")
-
-    weather_data : list[list[WeatherPoint]] = [[WeatherPoint(coordinates=Geo(latitude=0.0, longitude=0.0), temperature=0.0)] * width] * height
 
     geo_manager = GeoManager()
     try:
@@ -90,52 +88,67 @@ async def api_heatmap_v1_0(
     map_dowloader = OsmMapDownloader(
         leftdown=leftdown, rightupper=rightupper, width=width, height=height)
 
-    weather_namager = WeatherManager(proxy=proxy)
-    await weather_namager.get_weather_in_point(rightupper)
+    weather_matrix = WeatherMatrix(leftdown, rightupper, width, height)
+    weather_request_task = asyncio.create_task(
+        weather_matrix.request_weather(STEP_LAT, STEP_LON))
 
     filepath = f"{IMAGES_PATH}/{generate_random_name(32)}.jpg"
-    download_task = asyncio.create_task(map_dowloader.download_map(filepath))
+    # download_task = asyncio.create_task(map_dowloader.download_map(filepath))
+
+    # try:
+    #     await download_task
+    # except MapDownloaderErrorNotEnoughData as e:
+    #     return JSONResponse(
+    #         {"message": "Loader Enough Data"},
+    #         status_code=status.HTTP_502_BAD_GATEWAY,
+    #     )
+    # except MapDownloaderErrorWhileDownloading as e:
+    #     return JSONResponse(
+    #         {"message": "Something Went Wrong"},
+    #         status_code=status.HTTP_502_BAD_GATEWAY,
+    #     )
+    # except asyncio.TimeoutError as e:
+    #     print(e)
+    #     if os.path.exists(filepath):
+    #         pass
+    #         # return FileResponse(
+    #         #     filepath,
+    #         #     status_code=status.HTTP_200_OK,
+    #         #     headers={
+    #         #         "Cache-Control": "no-cache, no-store, must-revalidate",
+    #         #         "Pragma": "no-cache",
+    #         #         "Expires": "0",
+    #         #     },
+    #         # )
+    #     else:
+    #         return JSONResponse(
+    #             {"message": "Error, reached timeout load map"},
+    #             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    #         )
 
     try:
-        await download_task
-    except MapDownloaderErrorNotEnoughData as e:
-        return JSONResponse(
-            {"message": "Loader Enough Data"},
-            status_code=status.HTTP_502_BAD_GATEWAY,
-        )
-    except MapDownloaderErrorWhileDownloading as e:
-        return JSONResponse(
-            {"message": "Something Went Wrong"},
-            status_code=status.HTTP_502_BAD_GATEWAY,
-        )
-    except asyncio.TimeoutError as e:
+        await weather_request_task
+    except Exception as e:
+        raise e
+        # TODO
         print(e)
-        if os.path.exists(filepath):
-            pass
-            # return FileResponse(
-            #     filepath,
-            #     status_code=status.HTTP_200_OK,
-            #     headers={
-            #         "Cache-Control": "no-cache, no-store, must-revalidate",
-            #         "Pragma": "no-cache",
-            #         "Expires": "0",
-            #     },
-            # )
-        else:
-            return JSONResponse(
-                {"message": "Error, reached timeout load map"},
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+        pass
 
-    print(filepath)
-    return FileResponse(
-        filepath,
-        status_code=status.HTTP_200_OK,
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
+    weather_matrix.interpolate_data()
+    # print(filepath)
+    # return FileResponse(
+    #     filepath,
+    #     status_code=status.HTTP_200_OK,
+    #     headers={
+    #         "Cache-Control": "no-cache, no-store, must-revalidate",
+    #         "Pragma": "no-cache",
+    #         "Expires": "0",
+    #     },
+    # )
+
+    return JSONResponse(
+        {"message": "Something Went Wrong"},
+        status_code=status.HTTP_502_BAD_GATEWAY,
     )
 
 

@@ -1,0 +1,83 @@
+from src.weather import WeatherManager
+from models.weather import WeatherPoint
+from models.geo import Geo
+
+import asyncio
+
+
+class WeatherMatrixRequestErr(Exception):
+    def __init__(self, message=None):
+        if message == None:
+            self.message = "Error, size of request and response data is different"
+        else:
+            self.message = message
+
+    def __str__(self):
+        return f"raise Exception, message: {self.message}"
+
+
+class WeatherMatrix:
+    def __init__(self, leftdown: Geo, rightupper: Geo, width: int, height: int, proxy: str = None):
+        self.proxy = proxy
+        # self.leftdown: Geo = leftdown
+        # self.rightupper: Geo = rightupper
+        self.leftdown = Geo(latitude=32, longitude=54)
+        self.rightupper = Geo(latitude=44, longitude=57)
+
+        # self.width: int = width
+        # self.height: int = height
+        self.width = 10
+        self.height = 5
+
+        self.matrix: list[list[WeatherPoint]] = [
+            [0] * self.width for _ in range(self.height)]
+
+        dlat = (self.rightupper.latitude -
+                self.leftdown.latitude) / (self.height - 1)
+        dlong = (self.rightupper.longitude -
+                 self.leftdown.longitude) / (self.width - 1)
+
+        for i in range(self.height):
+            for j in range(self.width):
+                latitude = self.leftdown.latitude + i * dlat
+                longitude = self.leftdown.longitude + j * dlong
+
+                temp_geo: Geo = Geo(latitude=latitude, longitude=longitude)
+                self.matrix[i][j] = WeatherPoint(
+                    coordinates=temp_geo, temperature=None)
+
+    async def request_weather(self, step_lat: int, step_long: int):
+
+        dlat_index = self.height / step_lat
+        dlong_index = self.width / step_long
+
+        weather_manager = WeatherManager(self.proxy)
+        tasks = []
+        indexes = []
+
+        cur_lat_index, cur_long_index = 0, 0
+        while cur_lat_index < self.height:
+            while cur_long_index < self.width:
+                i = round(cur_lat_index)
+                j = round(cur_long_index)
+                indexes.append((i, j))
+                temp_geo: Geo = self.matrix[i][j].coordinates
+                task = asyncio.create_task(
+                    weather_manager.get_weather_in_point(temp_geo))
+                tasks.append(task)
+
+                cur_long_index += dlong_index
+            cur_long_index = 0
+            cur_lat_index += dlat_index
+
+        results = await asyncio.gather(*tasks)
+
+        if len(results) != len(indexes):
+            raise WeatherMatrixRequestErr()
+
+        for k in range(len(indexes)):
+            i, j = indexes[k]
+            self.matrix[i][j].temperature = results[k]
+
+    def interpolate_data(self):
+        print("pass")

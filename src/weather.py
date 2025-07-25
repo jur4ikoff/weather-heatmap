@@ -1,4 +1,5 @@
-import aiohttp, asyncio
+import aiohttp
+import asyncio
 
 from models.geo import Geo
 from models.weather import WeatherPoint
@@ -30,16 +31,21 @@ class WeatherManager:
         params = {"latitude": round(point.latitude, 6),
                   "longitude": round(point.longitude, 6),
                   "current": "temperature_2m"}
-        
+
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-            async with session.get(url = self.url, params=params) as response:
+            async with session.get(url=self.url, params=params) as response:
                 if (response.status != 200):
                     raise WeatherGetError()
-                
+
                 data = await response.json()
-                print(data)
-        
-        return data
+                try:
+                    temperature: float = float(
+                        data["current"]["temperature_2m"])
+                except KeyError as e:
+                    print(e)
+                    raise WeatherGetError()
+
+        return temperature
 
     async def get_weather_in_bounds(self, leftdown: Geo, rightupper: Geo) -> list[WeatherPoint]:
         """Функция получает данные в 4 точках риходят в формате "latitide, longitude и возвращает
