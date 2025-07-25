@@ -13,17 +13,15 @@ load_dotenv()
 GEOAPIFY_ACCESS_TOKEN = os.getenv("GEOAPIFY_API_KEY")
 
 
-proxy = "http://93.190.138.107:46182"
-
-
 class OsmMapDownloader(MapDownloader):
-    def __init__(self, leftdown: Geo, rightupper: Geo, width=1280, height=720):
+    def __init__(self, leftdown: Geo, rightupper: Geo, width=1280, height=720, proxy=None):
         super().__init__()
         self.url = "https://staticmap.openstreetmap.de/staticmap.php?"
         self.leftdown: Geo = leftdown
         self.rightupper: Geo | None = rightupper
         self.width = width
         self.height = height
+        self.proxy = proxy
 
     async def download_map(self, filepath: str) -> bool:
         if self.leftdown == None or self.rightupper == None:
@@ -40,7 +38,7 @@ class OsmMapDownloader(MapDownloader):
         }
 
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
-            async with session.get(url=self.url, params=params, proxy=proxy) as response:
+            async with session.get(url=self.url, params=params, proxy=self.proxy) as response:
                 if (response.status != 200):
                     raise MapDownloaderErrorWhileDownloading()
 

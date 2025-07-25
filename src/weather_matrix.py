@@ -2,6 +2,10 @@ from src.weather import WeatherManager
 from models.weather import WeatherPoint
 from models.geo import Geo
 
+from time import time
+
+import numpy as np
+from scipy.interpolate import griddata
 import asyncio
 
 
@@ -19,15 +23,13 @@ class WeatherMatrixRequestErr(Exception):
 class WeatherMatrix:
     def __init__(self, leftdown: Geo, rightupper: Geo, width: int, height: int, proxy: str = None):
         self.proxy = proxy
-        # self.leftdown: Geo = leftdown
-        # self.rightupper: Geo = rightupper
-        self.leftdown = Geo(latitude=32, longitude=54)
-        self.rightupper = Geo(latitude=44, longitude=57)
+        self.leftdown: Geo = leftdown
+        self.rightupper: Geo = rightupper
 
-        # self.width: int = width
-        # self.height: int = height
-        self.width = 10
-        self.height = 5
+        self.width: int = width
+        self.height: int = height
+        # self.width = 10
+        # self.height = 5
 
         self.matrix: list[list[WeatherPoint]] = [
             [0] * self.width for _ in range(self.height)]
@@ -64,10 +66,20 @@ class WeatherMatrix:
                 indexes.append((i, j))
                 temp_geo: Geo = self.matrix[i][j].coordinates
                 task = asyncio.create_task(
-                    weather_manager.get_weather_in_point(temp_geo))
+                    weather_manager.get_weather_in_point_v1(temp_geo))
                 tasks.append(task)
 
                 cur_long_index += dlong_index
+
+            cur_long_index = self.width - 1
+            i = round(cur_lat_index)
+            j = round(cur_long_index)
+            indexes.append((i, j))
+            temp_geo: Geo = self.matrix[i][j].coordinates
+            task = asyncio.create_task(
+                weather_manager.get_weather_in_point_v1(temp_geo))
+            tasks.append(task)
+
             cur_long_index = 0
             cur_lat_index += dlat_index
 
@@ -80,5 +92,46 @@ class WeatherMatrix:
             i, j = indexes[k]
             self.matrix[i][j].temperature = results[k]
 
-    def interpolate_data(self):
-        print("pass")
+    def interpolate(self):
+        # Ваша матрица (пример)
+
+        time_start = time()
+        matrix = np.empty((self.height, self.width), dtype=float)
+
+        for i in range(self.height):
+            for j in range(self.width):
+                temperature = self.matrix[i][j].temperature
+                matrix[i, j] = temperature if temperature is not None else np.nan
+
+        rows, cols = np.where(~np.isnan(matrix))
+        values = matrix[~np.isnan(matrix)]
+
+        # 2. Создаем сетку для всех точек матрицы
+        grid_rows, grid_cols = np.mgrid[0:matrix.shape[0], 0:matrix.shape[1]]
+
+        # 3. Интерполяция (линейная, кубическая или nearest)
+        interpolated = griddata(
+            (rows, cols),
+            values,
+            (grid_rows, grid_cols),
+            method='linear',  # или 'nearest', 'cubic'
+            fill_value=np.nan  # если не удалось интерполировать
+        )
+
+        # 4. Заполнение оставшихся NaN (если нужно)
+        # Например, заменим их на среднее значение
+        interpolated = np.where(
+            np.isnan(interpolated),
+            np.nanmean(interpolated),
+            interpolated
+        )
+
+        print(interpolated)
+        print(
+            f"Function interpolate working for {time() - time_start} seconds")
+        return interpolated
+
+    def print(self):
+        for i in range(self.height):
+            for j in range(self.width):
+                print(self.matrix[i][j])

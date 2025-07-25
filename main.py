@@ -20,7 +20,7 @@ from src.weather import WeatherManager, WeatherGetError
 from src.weather_matrix import WeatherMatrix
 
 
-proxy = "https://23.237.210.82:80"
+proxy = "https://102.177.176.101:80"
 
 load_dotenv()
 IMAGES_PATH = os.getenv("IMAGES_PATH")
@@ -33,6 +33,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/scripts", StaticFiles(directory="scripts"), name="scripts")
 
 templates = Jinja2Templates(directory="templates")
+
+# async def get_proxy():
 
 
 @app.get("/")
@@ -86,13 +88,13 @@ async def api_heatmap_v1_0(
         )
 
     map_dowloader = OsmMapDownloader(
-        leftdown=leftdown, rightupper=rightupper, width=width, height=height)
+        leftdown=leftdown, rightupper=rightupper, width=width, height=height, proxy=proxy)
 
     weather_matrix = WeatherMatrix(leftdown, rightupper, width, height)
     weather_request_task = asyncio.create_task(
         weather_matrix.request_weather(STEP_LAT, STEP_LON))
 
-    filepath = f"{IMAGES_PATH}/{generate_random_name(32)}.jpg"
+    filepath = f"{IMAGES_PATH}/{generate_random_name(count=32)}.jpg"
     # download_task = asyncio.create_task(map_dowloader.download_map(filepath))
 
     # try:
@@ -134,7 +136,7 @@ async def api_heatmap_v1_0(
         print(e)
         pass
 
-    weather_matrix.interpolate_data()
+    weather_matrix.interpolate()
     # print(filepath)
     # return FileResponse(
     #     filepath,

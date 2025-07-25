@@ -5,3 +5,5 @@ uvicorn[standard]
 jinja2
 pydantic
 requests[socks]
+numpy
+scipy

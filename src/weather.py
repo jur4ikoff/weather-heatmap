@@ -24,7 +24,7 @@ class WeatherManager:
     def set_proxy(self, proxy):
         self.proxy = proxy
 
-    async def get_weather_in_point(self, point: Geo):
+    async def get_weather_in_point_v1(self, point: Geo):
         """Функция возвращает погоду в точке
         https://api.open-meteo.com/v1/forecast?latitude=54.90&longitude=20.90&current=temperature_2m"""
 
