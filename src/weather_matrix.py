@@ -51,6 +51,8 @@ class WeatherMatrix:
     async def request_weather(self, count_by_lat: int, count_by_long: int):
         """Функция запрашивает погоду в точках по latitude и longitude.
         count_by_lat, count_by_long: Количество точек на каждой оси"""
+        print("starting request weather")
+        
         dlat_index = self.height / count_by_lat
         dlong_index = self.width / count_by_long
 
@@ -126,7 +128,6 @@ class WeatherMatrix:
             interpolated
         )
 
-        print(interpolated)
         print(
             f"Function interpolate working for {time() - time_start} seconds")
         return interpolated

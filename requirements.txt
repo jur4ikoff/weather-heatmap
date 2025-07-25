@@ -7,3 +7,4 @@ pydantic
 requests[socks]
 numpy
 scipy
+pillow
