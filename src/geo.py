@@ -18,7 +18,7 @@ class GeoManager:
         if coordinates.latitude < -90 or coordinates.latitude > 90:
             return False
 
-        if coordinates.longitude < -90 or coordinates.longitude > 90:
+        if coordinates.longitude < -180 or coordinates.longitude > 180:
             return False
 
         return True

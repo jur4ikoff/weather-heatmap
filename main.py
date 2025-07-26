@@ -18,6 +18,7 @@ from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnough
 from src.generators import generate_random_name
 from src.weather_matrix import WeatherMatrix, WeatherMatrixRequestErr
 
+from heatmap.heatmap import HeatMap
 
 load_dotenv()
 IMAGES_PATH = os.getenv("IMAGES_PATH")
@@ -46,7 +47,9 @@ async def api_heatmap_v1_0(
     """
     str_center_coordinates, in format: lattitude&longitude
     """
-
+    # TODO
+    width = 1077
+    height = 1280
     # res = await check_proxy(proxy)
     # print(f"proxy res {res}")
 
@@ -77,39 +80,39 @@ async def api_heatmap_v1_0(
     weather_request_task = asyncio.create_task(
         weather_matrix.request_weather(STEP_LAT, STEP_LON))
 
-    filepath = f"{IMAGES_PATH}/{generate_random_name(count=32)}.jpg"
-    download_task = asyncio.create_task(map_dowloader.download_map(filepath))
+    # filepath = f"{IMAGES_PATH}/{generate_random_name(count=32)}.jpg"
+    # download_task = asyncio.create_task(map_dowloader.download_map(filepath))
 
-    try:
-        await download_task
-    except MapDownloaderErrorNotEnoughData as e:
-        return JSONResponse(
-            {"message": "Loader Enough Data"},
-            status_code=status.HTTP_502_BAD_GATEWAY,
-        )
-    except MapDownloaderErrorWhileDownloading as e:
-        return JSONResponse(
-            {"message": "Something Went Wrong"},
-            status_code=status.HTTP_502_BAD_GATEWAY,
-        )
-    except asyncio.TimeoutError as e:
-        print(e)
-        if os.path.exists(filepath):
-            pass
-            # return FileResponse(
-            #     filepath,
-            #     status_code=status.HTTP_200_OK,
-            #     headers={
-            #         "Cache-Control": "no-cache, no-store, must-revalidate",
-            #         "Pragma": "no-cache",
-            #         "Expires": "0",
-            #     },
-            # )
-        else:
-            return JSONResponse(
-                {"message": "Error, reached timeout load map"},
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
+    # try:
+    #     await download_task
+    # except MapDownloaderErrorNotEnoughData as e:
+    #     return JSONResponse(
+    #         {"message": "Loader Enough Data"},
+    #         status_code=status.HTTP_502_BAD_GATEWAY,
+    #     )
+    # except MapDownloaderErrorWhileDownloading as e:
+    #     return JSONResponse(
+    #         {"message": "Something Went Wrong"},
+    #         status_code=status.HTTP_502_BAD_GATEWAY,
+    #     )
+    # except asyncio.TimeoutError as e:
+    #     print(e)
+    #     if os.path.exists(filepath):
+    #         pass
+    #         # return FileResponse(
+    #         #     filepath,
+    #         #     status_code=status.HTTP_200_OK,
+    #         #     headers={
+    #         #         "Cache-Control": "no-cache, no-store, must-revalidate",
+    #         #         "Pragma": "no-cache",
+    #         #         "Expires": "0",
+    #         #     },
+    #         # )
+    #     else:
+    #         return JSONResponse(
+    #             {"message": "Error, reached timeout load map"},
+    #             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    #         )
 
     try:
         await weather_request_task
@@ -127,18 +130,20 @@ async def api_heatmap_v1_0(
         )
 
     weather_data = weather_matrix.interpolate()
-    print(filepath)
-    return FileResponse(
-        filepath,
-        status_code=status.HTTP_200_OK,
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0",
-        },
-    )
+    filepath = None
+    heatmap = HeatMap(filepath, weather_data)
 
-    # return JSONResponse(
-    #     {"message": "Something Went Wrong"},
-    #     status_code=status.HTTP_502_BAD_GATEWAY,
+    # return FileResponse(
+    #     filepath,
+    #     status_code=status.HTTP_200_OK,
+    #     headers={
+    #         "Cache-Control": "no-cache, no-store, must-revalidate",
+    #         "Pragma": "no-cache",
+    #         "Expires": "0",
+    #     },
     # )
+
+    return JSONResponse(
+        {"message": "Something Went Wrong"},
+        status_code=status.HTTP_502_BAD_GATEWAY,
+    )
