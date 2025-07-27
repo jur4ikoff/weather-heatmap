@@ -46,7 +46,3 @@ class WeatherManager:
                     raise WeatherGetError()
 
         return temperature
-
-    async def get_weather_in_bounds(self, leftdown: Geo, rightupper: Geo) -> list[WeatherPoint]:
-        """Функция получает данные в 4 точках риходят в формате "latitide, longitude и возвращает
-        массив из 4 точек с погодой. Порядок обхода. Левый верх > Правый верх > Правый низ > Левый низ"""

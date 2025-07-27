@@ -74,6 +74,8 @@ class HeatMap:
     def open_image(self):
         image_pil = Image.open(self.filepath)
         self.image = np.array(image_pil, dtype=np.float32) / 255.0
+        self.image = self.grayscale_weighted(self.image)
+        
 
 
     def generate_gradient(self, weather_data):
@@ -89,26 +91,27 @@ class HeatMap:
         return gradient
 
     def overlay_blend(self, image, color):
-        # Проверяем, нужно ли нормализовать (если значения в [0, 255])
-        if image.dtype == np.uint8 or np.max(image) > 1.0:
-            base = image.astype(np.float32) / 255.0
-        else:
-            base = image.copy()
+        return image * (color / 255.0)
+        # # Проверяем, нужно ли нормализовать (если значения в [0, 255])
+        # if image.dtype == np.uint8 or np.max(image) > 1.0:
+        #     base = image.astype(np.float32) / 255.0
+        # else:
+        #     base = image.copy()
 
-        if color.dtype == np.uint8 or np.max(color) > 1.0:
-            overlay = color.astype(np.float32) / 255.0
-        else:
-            overlay = color.copy()
+        # if color.dtype == np.uint8 or np.max(color) > 1.0:
+        #     overlay = color.astype(np.float32) / 255.0
+        # else:
+        #     overlay = color.copy()
 
-        # Применение формулы Overlay с np.where (автоматически работает по каналам)
-        result = np.where(base < 0.5, 2 * base * overlay,
-                          1 - 2 * (1 - base) * (1 - overlay))
+        # # Применение формулы Overlay с np.where (автоматически работает по каналам)
+        # result = np.where(base < 0.5, 2 * base * overlay,
+        #                   1 - 2 * (1 - base) * (1 - overlay))
 
-        # Возврат в исходный диапазон
-        if image.dtype == np.uint8 or np.max(image) > 1.0:
-            result = (result * 255).clip(0, 255).astype(np.uint8)
+        # # Возврат в исходный диапазон
+        # if image.dtype == np.uint8 or np.max(image) > 1.0:
+        #     result = (result * 255).clip(0, 255).astype(np.uint8)
 
-        return result
+        # return result
 
     @staticmethod
     def get_color_by_weather(temperature: int) -> np.array:
@@ -133,6 +136,9 @@ class HeatMap:
         # Масштабирование до [0, 255] (если нужно)
         r_int, g_int, b_int = int(r * 255), int(g * 255), int(b * 255)
         return np.array([r_int, g_int, b_int])
+
+    def grayscale_weighted(self, image):
+        return image.mean(axis=2, keepdims=True)
 
 
 if __name__ == "__main__":

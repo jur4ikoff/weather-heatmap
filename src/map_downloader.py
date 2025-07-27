@@ -1,4 +1,7 @@
 import asyncio
+import aiohttp
+import aiofiles
+import os
 
 IMAGES_DIRECTORY = "static/images/"
 
@@ -33,12 +36,30 @@ class MapDownloader:
         self.width: int | None = width
         self.height: int | None = height
 
+        self.params = None
+        self.url = None
+
     def set_size(self, width, height):
         self.width = width
         self.height = height
 
-    async def download_map(self):
-        if self.latitude == None or self.longitude == None or self.scale == None:
-            return MapDownloaderErrorNotEnoughData()
+    async def download_map(self, filepath: str) -> bool:
+        # if self.leftdown == None or self.rightupper == None:
+        #     return MapDownloaderErrorNotEnoughData()
 
-        pass
+        print("starting downloading map")
+
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            async with session.get(url=self.url, params=self.params) as response:
+                if (response.status != 200):
+                    raise MapDownloaderErrorWhileDownloading()
+
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                print("Starting download")
+
+                async with aiofiles.open(filepath, "wb") as file:
+                    async for chunk in response.content.iter_chunked(1024):
+                        await file.write(chunk)
+
+        print(f"file saved to {filepath}")
+        return True

@@ -15,10 +15,12 @@ from models.weather import WeatherPoint
 
 from src.geo import GeoManager
 from src.osm_map_downloader import OsmMapDownloader, MapDownloaderErrorNotEnoughData, MapDownloaderErrorWhileDownloading
+from src.double_gis_map_downloader import DoubleGisMapDownloader
 from src.generators import generate_random_name
 from src.weather_matrix import WeatherMatrix, WeatherMatrixRequestErr
 
 from heatmap.heatmap import HeatMap
+
 
 load_dotenv()
 IMAGES_PATH = os.getenv("IMAGES_PATH")
@@ -27,12 +29,26 @@ STEP_LAT = int(os.getenv("STEP_LAT"))
 STEP_LON = int(os.getenv("STEP_LON"))
 
 app = FastAPI()
-app.state.cur_proxy = None
+app.state.cur_proxy = "http://109.191.0.92:8081"
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/scripts", StaticFiles(directory="scripts"), name="scripts")
 
 templates = Jinja2Templates(directory="templates")
+
+
+async def check_proxy(proxy):
+    test_url = "https://httpbin.org/ip"  # Сервис, который возвращает ваш IP
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(test_url, proxy=proxy, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    print(f"Прокси {proxy} работает. Ваш IP: {data['origin']}")
+                    return True
+    except:
+        return False
+    return False
 
 
 @app.get("/")
@@ -44,15 +60,6 @@ async def root():
 async def api_heatmap_v1_0(
     leftdown: str, rightupper: str, width: int = 1280, height: int = 720
 ):
-    """
-    str_center_coordinates, in format: lattitude&longitude
-    """
-    # TODO
-    width = 1077
-    height = 1280
-    # res = await check_proxy(proxy)
-    # print(f"proxy res {res}")
-
     geo_manager = GeoManager()
     try:
         leftdown: Geo = geo_manager.parse_coordinates(
@@ -73,46 +80,35 @@ async def api_heatmap_v1_0(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    map_dowloader = OsmMapDownloader(
-        leftdown=leftdown, rightupper=rightupper, width=width, height=height, proxy=app.state.cur_proxy)
+    map_dowloader = DoubleGisMapDownloader(
+        leftdown=leftdown, rightupper=rightupper, width=width, height=height)
 
     weather_matrix = WeatherMatrix(leftdown, rightupper, width, height)
     weather_request_task = asyncio.create_task(
         weather_matrix.request_weather(STEP_LAT, STEP_LON))
 
-    # filepath = f"{IMAGES_PATH}/{generate_random_name(count=32)}.jpg"
-    # download_task = asyncio.create_task(map_dowloader.download_map(filepath))
+    filepath = f"{IMAGES_PATH}/{generate_random_name(count=32)}.jpg"
+    download_task = asyncio.create_task(map_dowloader.download_map(filepath))
 
-    # try:
-    #     await download_task
-    # except MapDownloaderErrorNotEnoughData as e:
-    #     return JSONResponse(
-    #         {"message": "Loader Enough Data"},
-    #         status_code=status.HTTP_502_BAD_GATEWAY,
-    #     )
-    # except MapDownloaderErrorWhileDownloading as e:
-    #     return JSONResponse(
-    #         {"message": "Something Went Wrong"},
-    #         status_code=status.HTTP_502_BAD_GATEWAY,
-    #     )
-    # except asyncio.TimeoutError as e:
-    #     print(e)
-    #     if os.path.exists(filepath):
-    #         pass
-    #         # return FileResponse(
-    #         #     filepath,
-    #         #     status_code=status.HTTP_200_OK,
-    #         #     headers={
-    #         #         "Cache-Control": "no-cache, no-store, must-revalidate",
-    #         #         "Pragma": "no-cache",
-    #         #         "Expires": "0",
-    #         #     },
-    #         # )
-    #     else:
-    #         return JSONResponse(
-    #             {"message": "Error, reached timeout load map"},
-    #             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-    #         )
+    try:
+        await download_task
+    except MapDownloaderErrorNotEnoughData as e:
+        return JSONResponse(
+            {"message": "Loader Enough Data"},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except MapDownloaderErrorWhileDownloading as e:
+        return JSONResponse(
+            {"message": "Something Went Wrong"},
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except asyncio.TimeoutError as e:
+        print(e)
+        if os.path.exists(filepath):
+            return JSONResponse(
+                {"message": "Error, reached timeout load map"},
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
     try:
         await weather_request_task
@@ -122,17 +118,16 @@ async def api_heatmap_v1_0(
             {"message": "Error, not all requests are succesfull"},
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
         )
-    except Exception as e:
-        print(e)
-        return JSONResponse(
-            {"message": "Unexpected exception"},
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        )
+    # except Exception as e:
+    #     print(e)
+    #     return JSONResponse(
+    #         {"message": "Unexpected exception"},
+    #         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+    #     )
 
-    weather_data = weather_matrix.interpolate()
-    filepath = "test.jpg"
-    heatmap = HeatMap(filepath, weather_data)
-    heatmap.get_heatmap()
+    # weather_data = weather_matrix.interpolate()
+    # heatmap = HeatMap(filepath, weather_data)
+    # heatmap.get_heatmap()
 
     # return FileResponse(
     #     filepath,

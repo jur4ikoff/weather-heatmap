@@ -28,8 +28,6 @@ class WeatherMatrix:
 
         self.width: int = width
         self.height: int = height
-        # self.width = 10
-        # self.height = 5
 
         self.matrix: list[list[WeatherPoint]] = [
             [0] * self.width for _ in range(self.height)]
@@ -58,7 +56,7 @@ class WeatherMatrix:
 
         weather_manager = WeatherManager(self.proxy)
         tasks = []
-        indexes = []
+        indexes = [] 
 
         cur_lat_index, cur_long_index = 0, 0
         while cur_lat_index < self.height:
@@ -85,9 +83,17 @@ class WeatherMatrix:
             cur_long_index = 0
             cur_lat_index += dlat_index
 
-        results = await asyncio.gather(*tasks)
+        try:
+            # Если случается ошибка, то 96 строчка не достигнет
+            results = await asyncio.gather(*tasks)
+        except Exception as e:
+            print(e)
+            # raise e
 
-        if len(results) != len(indexes):
+        # if len(results) != len(indexes):
+        #     raise WeatherMatrixRequestErr()
+
+        if len(indexes) - len(results) != 0:
             raise WeatherMatrixRequestErr()
 
         for k in range(len(indexes)):
