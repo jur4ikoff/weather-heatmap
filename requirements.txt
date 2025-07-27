@@ -8,5 +8,3 @@ requests[socks]
 numpy
 scipy
 pillow
-opencv-python
-matplotlib

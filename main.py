@@ -130,8 +130,9 @@ async def api_heatmap_v1_0(
         )
 
     weather_data = weather_matrix.interpolate()
-    filepath = None
+    filepath = "test.jpg"
     heatmap = HeatMap(filepath, weather_data)
+    heatmap.get_heatmap()
 
     # return FileResponse(
     #     filepath,
