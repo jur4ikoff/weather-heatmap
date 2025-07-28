@@ -58,6 +58,7 @@ class WeatherMatrix:
         tasks = []
         indexes = []
 
+        # Дальше начинается говнкод, по хорошему вынести все в класс TaskMager, который уже будет выпонлять все запрос
         cur_lat_index, cur_long_index = 0, 0
         while cur_lat_index < self.height:
             while cur_long_index < self.width:
@@ -85,8 +86,29 @@ class WeatherMatrix:
             cur_long_index = 0
             cur_lat_index += dlat_index
 
-            # Если случается ошибка, то 96 строчка не достигнет
-            results = await asyncio.gather(*tasks)
+        cur_lat_index = self.height - 1
+        while cur_long_index < self.width:
+            i = int(cur_lat_index)
+            j = int(cur_long_index)
+            task_index = len(indexes)
+            indexes.append((i, j))
+            temp_geo: Geo = self.matrix[i][j].coordinates
+            task = asyncio.create_task(
+                weather_manager.get_weather_in_point_v1(temp_geo, task_index))
+            tasks.append(task)
+
+            cur_long_index += dlong_index
+
+        i = self.height - 1
+        j = self.width - 1
+        task_index = len(indexes)
+        indexes.append((i, j))
+        temp_geo: Geo = self.matrix[i][j].coordinates
+        task = asyncio.create_task(
+            weather_manager.get_weather_in_point_v1(temp_geo, task_index))
+        tasks.append(task)
+
+        results = await asyncio.gather(*tasks)
 
         if (len(indexes) - len(results)) > len(indexes) / 10:
             raise WeatherMatrixRequestErr()
@@ -96,8 +118,6 @@ class WeatherMatrix:
             i, j = indexes[index]
             self.matrix[i][j].temperature = temperature
 
-        print(self.matrix)
-        print()
 
     def interpolate(self):
         # Ваша матрица (пример)
@@ -141,4 +161,4 @@ class WeatherMatrix:
     def print(self):
         for i in range(self.height):
             for j in range(self.width):
-                print(self.matrix[i][j])
+                print(i, j, self.matrix[i][j], end="\n")
