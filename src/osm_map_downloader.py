@@ -12,7 +12,7 @@ GEOAPIFY_ACCESS_TOKEN = os.getenv("GEOAPIFY_API_KEY")
 
 
 class OsmMapDownloader(MapDownloader):
-    def __init__(self, leftdown: Geo, rightupper: Geo, width=1280, height=720):
+    def __init__(self, leftdown: Geo, rightupper: Geo, width, height):
         super().__init__()
         self.url = "https://staticmap.openstreetmap.de/staticmap.php?"
         self.leftdown: Geo = leftdown

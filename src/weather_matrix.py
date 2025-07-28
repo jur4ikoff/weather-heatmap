@@ -50,59 +50,57 @@ class WeatherMatrix:
         """Функция запрашивает погоду в точках по latitude и longitude.
         count_by_lat, count_by_long: Количество точек на каждой оси"""
         print("starting request weather")
-        
+
         dlat_index = self.height / count_by_lat
         dlong_index = self.width / count_by_long
 
         weather_manager = WeatherManager(self.proxy)
         tasks = []
-        indexes = [] 
+        indexes = []
 
         cur_lat_index, cur_long_index = 0, 0
         while cur_lat_index < self.height:
             while cur_long_index < self.width:
-                i = round(cur_lat_index)
-                j = round(cur_long_index)
+                i = int(cur_lat_index)
+                j = int(cur_long_index)
+                task_index = len(indexes)
                 indexes.append((i, j))
                 temp_geo: Geo = self.matrix[i][j].coordinates
                 task = asyncio.create_task(
-                    weather_manager.get_weather_in_point_v1(temp_geo))
+                    weather_manager.get_weather_in_point_v1(temp_geo, task_index))
                 tasks.append(task)
 
                 cur_long_index += dlong_index
 
             cur_long_index = self.width - 1
-            i = round(cur_lat_index)
-            j = round(cur_long_index)
+            i = int(cur_lat_index)
+            j = int(cur_long_index)
+            task_index = len(indexes)
             indexes.append((i, j))
             temp_geo: Geo = self.matrix[i][j].coordinates
             task = asyncio.create_task(
-                weather_manager.get_weather_in_point_v1(temp_geo))
+                weather_manager.get_weather_in_point_v1(temp_geo, task_index))
             tasks.append(task)
 
             cur_long_index = 0
             cur_lat_index += dlat_index
 
-        try:
             # Если случается ошибка, то 96 строчка не достигнет
             results = await asyncio.gather(*tasks)
-        except Exception as e:
-            print(e)
-            # raise e
 
-        # if len(results) != len(indexes):
-        #     raise WeatherMatrixRequestErr()
-
-        if len(indexes) - len(results) != 0:
+        if (len(indexes) - len(results)) > len(indexes) / 10:
             raise WeatherMatrixRequestErr()
 
-        for k in range(len(indexes)):
-            i, j = indexes[k]
-            self.matrix[i][j].temperature = results[k]
+        for result in results:
+            temperature, index = result
+            i, j = indexes[index]
+            self.matrix[i][j].temperature = temperature
+
+        print(self.matrix)
+        print()
 
     def interpolate(self):
         # Ваша матрица (пример)
-
         time_start = time()
         matrix = np.empty((self.height, self.width), dtype=float)
 
@@ -125,6 +123,8 @@ class WeatherMatrix:
             method='linear',  # или 'nearest', 'cubic'
             fill_value=np.nan  # если не удалось интерполировать
         )
+
+        print(interpolated)
 
         # 4. Заполнение оставшихся NaN (если нужно)
         # Например, заменим их на среднее значение

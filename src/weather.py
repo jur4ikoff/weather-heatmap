@@ -21,10 +21,7 @@ class WeatherManager:
         self.url: str = "https://api.open-meteo.com/v1/forecast?"
         self.proxy = proxy
 
-    def set_proxy(self, proxy):
-        self.proxy = proxy
-
-    async def get_weather_in_point_v1(self, point: Geo):
+    async def get_weather_in_point_v1(self, point: Geo, task_index):
         """Функция возвращает погоду в точке
         https://api.open-meteo.com/v1/forecast?latitude=54.90&longitude=20.90&current=temperature_2m"""
 
@@ -35,7 +32,8 @@ class WeatherManager:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
             async with session.get(url=self.url, params=params) as response:
                 if (response.status != 200):
-                    raise WeatherGetError()
+                    return None, task_index
+
 
                 data = await response.json()
                 try:
@@ -45,4 +43,4 @@ class WeatherManager:
                     print(e)
                     raise WeatherGetError()
 
-        return temperature
+        return temperature, task_index

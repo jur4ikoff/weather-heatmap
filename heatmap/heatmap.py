@@ -5,8 +5,8 @@ from PIL import Image
 import colorsys
 
 
-MIN_TEMP = -50
-MAX_TEMP = 50
+MIN_TEMP = -40
+MAX_TEMP = 40
 
 
 class HetmapDataEmptyException(Exception):
@@ -18,7 +18,8 @@ class HetmapDataEmptyException(Exception):
 
     def __str__(self):
         return f"raise Exception, message: {self.message}"
-    
+
+
 class HeatmapFileNotFoundException(Exception):
     def __init__(self, message: str = None):
         if message == None:
@@ -29,6 +30,7 @@ class HeatmapFileNotFoundException(Exception):
     def __str__(self):
         return f"raise Exception, message: {self.message}"
 
+
 class HeatmapErrImageException(Exception):
     def __init__(self, message: str = None):
         if message == None:
@@ -38,6 +40,7 @@ class HeatmapErrImageException(Exception):
 
     def __str__(self):
         return f"raise Exception, message: {self.message}"
+
 
 class HeatMap:
     def __init__(self, filepath, weather_matrix):
@@ -56,7 +59,7 @@ class HeatMap:
             raise HeatmapFileNotFoundException()
 
         try:
-            self.open_image() 
+            self.open_image()
         except Exception as e:
             print(e)
             raise HeatmapErrImageException()
@@ -75,8 +78,6 @@ class HeatMap:
         image_pil = Image.open(self.filepath)
         self.image = np.array(image_pil, dtype=np.float32) / 255.0
         self.image = self.grayscale_weighted(self.image)
-        
-
 
     def generate_gradient(self, weather_data):
         gradient = np.zeros((self.height, self.width, 3),

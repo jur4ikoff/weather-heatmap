@@ -13,6 +13,7 @@ class DoubleGisMapDownloader(MapDownloader):
         lon = (leftdown.longitude + rightupper.longitude) / 2
 
         zoom = self.calculate_zoom(leftdown, rightupper, width, height)
+
         self.params = {
             "s": f"{width}x{height}",
             "c": f"{lat},{lon}",
@@ -21,12 +22,14 @@ class DoubleGisMapDownloader(MapDownloader):
 
     def calculate_zoom(self, leftdown: Geo, rigthupper: Geo, width, height):
         # Разница в долготе и широте
-        lat_diff = rigthupper.latitude - leftdown.latitude  # широта (Y)
-        lon_diff = rigthupper.longitude - leftdown.longitude  # долгота (X)
+        lat_diff = math.fabs(rigthupper.latitude -
+                             leftdown.latitude)  # широта (Y)
+        lon_diff = math.fabs(rigthupper.longitude -
+                             leftdown.longitude)  # долгота (X)
 
         # Рассчитываем zoom по ширине и высоте
-        zoom_lon = math.log2(360 * width / (128 * lon_diff))
-        zoom_lat = math.log2(180 * height / (128 * lat_diff))
+        zoom_lon = math.log2(360 * int(width) / (128 * lon_diff))
+        zoom_lat = math.log2(180 * int(height) / (128 * lat_diff))
 
         # Выбираем минимальный zoom, чтобы вся область влезла
         zoom = min(zoom_lon, zoom_lat)

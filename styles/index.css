@@ -1,0 +1,23 @@
+h1 {
+    margin: 0 auto 20px auto;
+    text-align: center;
+}
+
+#map {
+    width: 90%;
+    height: 550px;
+    margin: 0 auto 20px auto;
+}
+
+p {
+    text-align: center;
+    margin: 0 auto 20px auto;
+    max-width: 90%;
+}
+
+#resImg {
+    display: block;
+    margin: 0 auto;
+    max-width: 90%;
+    height: auto;
+}

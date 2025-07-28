@@ -19,7 +19,7 @@ from src.double_gis_map_downloader import DoubleGisMapDownloader
 from src.generators import generate_random_name
 from src.weather_matrix import WeatherMatrix, WeatherMatrixRequestErr
 
-from heatmap.heatmap import HeatMap
+from heatmap.heatmap import HeatMap, HetmapDataEmptyException, HeatmapFileNotFoundException, HeatmapErrImageException
 
 
 load_dotenv()
@@ -33,6 +33,7 @@ app.state.cur_proxy = "http://109.191.0.92:8081"
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/scripts", StaticFiles(directory="scripts"), name="scripts")
+app.mount("/styles", StaticFiles(directory="styles"), name="styles")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -58,8 +59,10 @@ async def root():
 
 @app.get("/api/v1.0/heatmap")
 async def api_heatmap_v1_0(
-    leftdown: str, rightupper: str, width: int = 1280, height: int = 720
+    leftdown: str, rightupper: str, width: int, height: int
 ):
+    width, height = int(width), int(height)
+
     geo_manager = GeoManager()
     try:
         leftdown: Geo = geo_manager.parse_coordinates(
@@ -110,36 +113,57 @@ async def api_heatmap_v1_0(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-    try:
-        await weather_request_task
-    except WeatherMatrixRequestErr as e:
-        print(e)
-        return JSONResponse(
-            {"message": "Error, not all requests are succesfull"},
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-        )
+    await weather_request_task
+    # try:
+    #     await weather_request_task
+    # except WeatherMatrixRequestErr as e:
+    #     print(e)
+    #     return JSONResponse(
+    #         {"message": "Error, not all requests are succesfull"},
+    #         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+    #     )
     # except Exception as e:
     #     print(e)
     #     return JSONResponse(
     #         {"message": "Unexpected exception"},
     #         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
     #     )
+    
+    weather_data = weather_matrix.interpolate()
+    try:
+        heatmap = HeatMap(filepath, weather_data)
+    except HeatmapFileNotFoundException as e:
+        print(e.message)
+        print(filepath)
+        return JSONResponse(
+            {"message": "Internal server error, no file to heatmap"},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except HeatmapErrImageException as e:
+        print(e)
+        print(filepath)
+        return JSONResponse(
+            {"message": "Internal server error, corrupt map image"},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except HetmapDataEmptyException as e:
+        print(e)
+        return JSONResponse(
+            {"message": "Internal server error, weather data corrupted"}
+        )
+    heatmap.get_heatmap()
 
-    # weather_data = weather_matrix.interpolate()
-    # heatmap = HeatMap(filepath, weather_data)
-    # heatmap.get_heatmap()
-
-    # return FileResponse(
-    #     filepath,
-    #     status_code=status.HTTP_200_OK,
-    #     headers={
-    #         "Cache-Control": "no-cache, no-store, must-revalidate",
-    #         "Pragma": "no-cache",
-    #         "Expires": "0",
-    #     },
-    # )
-
-    return JSONResponse(
-        {"message": "Something Went Wrong"},
-        status_code=status.HTTP_502_BAD_GATEWAY,
+    return FileResponse(
+        filepath,
+        status_code=status.HTTP_200_OK,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
+
+    # return JSONResponse(
+    #     {"message": "Something Went Wrong"},
+    #     status_code=status.HTTP_502_BAD_GATEWAY,
+    # )

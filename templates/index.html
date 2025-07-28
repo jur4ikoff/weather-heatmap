@@ -11,6 +11,7 @@
     <script src="https://api-maps.yandex.ru/2.1/?apikey=b83a40a6-6cc1-4615-a830-c6b988c0dd8d&lang=ru_RU"
         type="text/javascript"></script>
 
+    <link rel="stylesheet" href="./styles/index.css">
     <script type="module" src="./scripts/index.js"></script>
 
 </head>
@@ -19,13 +20,13 @@
     <H1 style="margin-left: 5%; display: block;">Выберите место на карте</H1>
 
 
-    <div id="map" style="width: 90%; height: 550px; margin: 0 auto;"></div>
-    <p>
-        <button id="resButton" style="width: 90%;height: 40px; margin: 0 auto; display: block;">Результат</button>
-    </p>
+    <div id="map" style="width: 90%; height: 550px; margin: 0 auto;"></div> <br>    
+    <div style="display: flex; justify-content: center;">
+        <button id="resButton" style="width: 90%; height: 50px;">Результат</button>
+    </div>
 
     <p>
-        Фотография может грузиться несколько секунд, как правило до 30. Пожалуйста, подождите
+        Фотография может грузиться до 10. Пожалуйста, подождите
     </p>
     <img id="resImg" alt="Изображение"></img>
 </body>
