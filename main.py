@@ -112,22 +112,21 @@ async def api_heatmap_v1_0(
                 {"message": "Error, reached timeout load map"},
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
-
-    await weather_request_task
-    # try:
-    #     await weather_request_task
-    # except WeatherMatrixRequestErr as e:
-    #     print(e)
-    #     return JSONResponse(
-    #         {"message": "Error, not all requests are succesfull"},
-    #         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-    #     )
-    # except Exception as e:
-    #     print(e)
-    #     return JSONResponse(
-    #         {"message": "Unexpected exception"},
-    #         status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-    #     )
+        
+    try:
+        await weather_request_task
+    except WeatherMatrixRequestErr as e:
+        print(e)
+        return JSONResponse(
+            {"message": "Error, not all requests are succesfull"},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        )
+    except Exception as e:
+        print(e)
+        return JSONResponse(
+            {"message": "Unexpected exception"},
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+        )
     
     weather_data = weather_matrix.interpolate()
     try:
